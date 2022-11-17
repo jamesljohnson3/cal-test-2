@@ -8,7 +8,6 @@ import { z } from "zod";
 
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { HttpError } from "@calcom/lib/http-error";
-import showToast from "@calcom/lib/notification";
 import { trpc } from "@calcom/trpc/react";
 import { Button } from "@calcom/ui";
 import { Dialog, DialogClose, DialogContent, DialogTrigger } from "@calcom/ui/Dialog";
@@ -16,6 +15,7 @@ import { Icon } from "@calcom/ui/Icon";
 import PhoneInput from "@calcom/ui/form/PhoneInputLazy";
 import Select from "@calcom/ui/form/Select";
 import { Form, TextField } from "@calcom/ui/form/fields";
+import showToast from "@calcom/ui/v2/core/notifications";
 
 import { TIME_UNIT, WORKFLOW_ACTIONS, WORKFLOW_TRIGGER_EVENTS } from "../lib/constants";
 import {
@@ -62,7 +62,7 @@ export function NewWorkflowButton() {
     resolver: zodResolver(formSchema),
   });
 
-  const createMutation = trpc.useMutation("viewer.workflows.create", {
+  const createMutation = trpc.viewer.workflows.create.useMutation({
     onSuccess: async ({ workflow }) => {
       await router.replace("/workflows/" + workflow.id);
       setIsPhoneNumberNeeded(false);

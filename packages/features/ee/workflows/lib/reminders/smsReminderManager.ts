@@ -48,7 +48,8 @@ export const scheduleSMSReminder = async (
   },
   message: string,
   workflowStepId: number,
-  template: WorkflowTemplates
+  template: WorkflowTemplates,
+  sender: string
 ) => {
   const { startTime, endTime } = evt;
   const uid = evt.uid as string;
@@ -76,6 +77,7 @@ export const scheduleSMSReminder = async (
         eventName: evt.title,
         organizerName: evt.organizer.name,
         attendeeName: evt.attendees[0].name,
+        attendeeEmail: evt.attendees[0].email,
         eventDate: dayjs(evt.startTime).tz(timeZone),
         eventTime: dayjs(evt.startTime).tz(timeZone),
         timeZone: timeZone,
@@ -89,14 +91,14 @@ export const scheduleSMSReminder = async (
   }
 
   if (message.length > 0 && reminderPhone) {
-    //send SMS when event is booked/cancelled/Reschdeuled
+    //send SMS when event is booked/cancelled/rescheduled
     if (
       triggerEvent === WorkflowTriggerEvents.NEW_EVENT ||
       triggerEvent === WorkflowTriggerEvents.EVENT_CANCELLED ||
       triggerEvent === WorkflowTriggerEvents.RESCHEDULE_EVENT
     ) {
       try {
-        await twilio.sendSMS(reminderPhone, message);
+        await twilio.sendSMS(reminderPhone, message, sender);
       } catch (error) {
         console.log(`Error sending SMS with error ${error}`);
       }
@@ -111,7 +113,12 @@ export const scheduleSMSReminder = async (
         !scheduledDate.isAfter(currentDate.add(7, "day"))
       ) {
         try {
-          const scheduledSMS = await twilio.scheduleSMS(reminderPhone, message, scheduledDate.toDate());
+          const scheduledSMS = await twilio.scheduleSMS(
+            reminderPhone,
+            message,
+            scheduledDate.toDate(),
+            sender
+          );
 
           await prisma.workflowReminder.create({
             data: {

@@ -3,7 +3,6 @@ import { JSONObject } from "superjson/dist/types";
 
 import { LocationObject, privacyFilteredLocations } from "@calcom/app-store/locations";
 import { parseRecurringEvent } from "@calcom/lib";
-import { useLocale } from "@calcom/lib/hooks/useLocale";
 import prisma from "@calcom/prisma";
 
 import { asStringOrNull, asStringOrThrow } from "@lib/asStringOrNull";
@@ -15,8 +14,6 @@ import BookingPage from "@components/booking/pages/BookingPage";
 export type TeamBookingPageProps = inferSSRProps<typeof getServerSideProps>;
 
 export default function TeamBookingPage(props: TeamBookingPageProps) {
-  const { t } = useLocale();
-
   return <BookingPage {...props} />;
 }
 
@@ -88,7 +85,7 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
   const eventType = {
     ...eventTypeRaw,
     //TODO: Use zodSchema to verify it instead of using Type Assertion
-    locations: privacyFilteredLocations(eventTypeRaw.locations as LocationObject[]),
+    locations: privacyFilteredLocations((eventTypeRaw.locations || []) as LocationObject[]),
     recurringEvent: parseRecurringEvent(eventTypeRaw.recurringEvent),
   };
 
@@ -141,6 +138,7 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
       isDynamicGroupBooking: false,
       hasHashedBookingLink: false,
       hashedLink: null,
+      isEmbed: typeof context.query.embed === "string",
     },
   };
 }

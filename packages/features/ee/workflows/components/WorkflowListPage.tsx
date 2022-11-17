@@ -3,7 +3,6 @@ import { useState } from "react";
 
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { HttpError } from "@calcom/lib/http-error";
-import showToast from "@calcom/lib/notification";
 import { trpc } from "@calcom/trpc/react";
 import { Button, Tooltip } from "@calcom/ui";
 import ConfirmationDialogContent from "@calcom/ui/ConfirmationDialogContent";
@@ -11,6 +10,7 @@ import { Dialog } from "@calcom/ui/Dialog";
 import Dropdown, { DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@calcom/ui/Dropdown";
 import EmptyScreen from "@calcom/ui/EmptyScreen";
 import { Icon } from "@calcom/ui/Icon";
+import showToast from "@calcom/ui/v2/core/notifications";
 
 import { WorkflowType } from "./v2/WorkflowListPage";
 
@@ -35,11 +35,11 @@ export default function WorkflowListPage({ workflows }: Props) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteDialogTypeId, setDeleteDialogTypeId] = useState(0);
 
-  const query = trpc.useQuery(["viewer.workflows.list"]);
+  const query = trpc.viewer.workflows.list.useQuery();
 
-  const deleteMutation = trpc.useMutation("viewer.workflows.delete", {
+  const deleteMutation = trpc.viewer.workflows.delete.useMutation({
     onSuccess: async () => {
-      await utils.invalidateQueries(["viewer.workflows.list"]);
+      await utils.viewer.workflows.list.invalidate();
       showToast(t("workflow_deleted_successfully"), "success");
       setDeleteDialogOpen(false);
     },

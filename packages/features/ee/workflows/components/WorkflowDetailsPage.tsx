@@ -6,11 +6,11 @@ import { Controller, UseFormReturn } from "react-hook-form";
 
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { HttpError } from "@calcom/lib/http-error";
-import showToast from "@calcom/lib/notification";
 import { trpc } from "@calcom/trpc/react";
 import { Button } from "@calcom/ui";
 import MultiSelectCheckboxes, { Option } from "@calcom/ui/form/MultiSelectCheckboxes";
 import { Form } from "@calcom/ui/form/fields";
+import showToast from "@calcom/ui/v2/core/notifications";
 
 import type { FormValues } from "../pages/workflow";
 import { AddActionDialog } from "./AddActionDialog";
@@ -33,7 +33,7 @@ export default function WorkflowDetailsPage(props: Props) {
   const [reload, setReload] = useState(false);
   const [editCounter, setEditCounter] = useState(0);
 
-  const { data, isLoading } = trpc.useQuery(["viewer.eventTypes"]);
+  const { data, isLoading } = trpc.viewer.eventTypes.getByViewer.useQuery();
 
   const eventTypeOptions = useMemo(
     () =>
@@ -50,10 +50,10 @@ export default function WorkflowDetailsPage(props: Props) {
     [data]
   );
 
-  const updateMutation = trpc.useMutation("viewer.workflows.update", {
+  const updateMutation = trpc.viewer.workflows.update.useMutation({
     onSuccess: async ({ workflow }) => {
       if (workflow) {
-        utils.setQueryData(["viewer.workflows.get", { id: +workflow.id }], workflow);
+        utils.viewer.workflows.get.setData({ id: +workflow.id }, workflow);
 
         showToast(
           t("workflow_updated_successfully", {
@@ -95,6 +95,7 @@ export default function WorkflowDetailsPage(props: Props) {
       reminderBody: null,
       emailSubject: null,
       template: WorkflowTemplates.REMINDER,
+      numberRequired: null,
     };
     steps?.push(step);
     form.setValue("steps", steps);

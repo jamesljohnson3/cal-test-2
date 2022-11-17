@@ -1,19 +1,21 @@
 import { MembershipRole, UserPermissionRole } from "@prisma/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@radix-ui/react-collapsible";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { ComponentProps, useEffect, useState } from "react";
 
 import { classNames } from "@calcom/lib";
 import { WEBAPP_URL } from "@calcom/lib/constants";
+import { HOSTED_CAL_FEATURES } from "@calcom/lib/constants";
 import { getPlaceholderAvatar } from "@calcom/lib/defaultAvatarImage";
 import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { trpc } from "@calcom/trpc/react";
-import Button from "@calcom/ui/v2/core/Button";
+import { Button } from "@calcom/ui/components/button";
 
 import ErrorBoundary from "../../../ErrorBoundary";
 import { Icon } from "../../../Icon";
-import { Badge } from "../Badge";
+import { Badge } from "../../../components/badge";
 import { useMeta } from "../Meta";
 import Shell from "../Shell";
 import { VerticalTabItemProps } from "../navigation/tabs/VerticalTabItem";
@@ -39,9 +41,9 @@ const tabs: VerticalTabItemProps[] = [
     href: "/settings/security",
     icon: Icon.FiKey,
     children: [
-      //
       { name: "password", href: "/settings/security/password" },
       { name: "2fa_auth", href: "/settings/security/two-factor-auth" },
+      { name: "impersonation", href: "/settings/security/impersonation" },
     ],
   },
   {
@@ -81,6 +83,13 @@ const tabs: VerticalTabItemProps[] = [
   },
 ];
 
+tabs.find((tab) => {
+  // Add "SAML SSO" to the tab
+  if (tab.name === "security" && !HOSTED_CAL_FEATURES) {
+    tab.children?.push({ name: "saml_config", href: "/settings/security/sso" });
+  }
+});
+
 // The following keys are assigned to admin only
 const adminRequiredKeys = ["admin"];
 
@@ -100,9 +109,8 @@ const SettingsSidebarContainer = ({ className = "" }) => {
   const tabsWithPermissions = useTabs();
   const [teamMenuState, setTeamMenuState] =
     useState<{ teamId: number | undefined; teamMenuOpen: boolean }[]>();
-  const [isLoading, setIsLoading] = useState(true);
 
-  const { data: teams } = trpc.useQuery(["viewer.teams.list"]);
+  const { data: teams } = trpc.viewer.teams.list.useQuery();
 
   useEffect(() => {
     if (teams) {
@@ -151,12 +159,16 @@ const SettingsSidebarContainer = ({ className = "" }) => {
           ) : (
             <React.Fragment key={tab.href}>
               <div className={`${!tab.children?.length ? "mb-3" : ""}`}>
-                <div className="group flex h-9 w-64 flex-row items-center rounded-md px-3 py-[10px] text-sm font-medium leading-none text-gray-600 hover:bg-gray-100  group-hover:text-gray-700 [&[aria-current='page']]:bg-gray-200 [&[aria-current='page']]:text-gray-900">
-                  {tab && tab.icon && (
-                    <tab.icon className="mr-[12px] h-[16px] w-[16px] stroke-[2px] md:mt-0" />
-                  )}
-                  <p className="text-sm font-medium leading-5">{t(tab.name)}</p>
-                </div>
+                <Link href={tab.href}>
+                  <a>
+                    <div className="group flex h-9 w-64 flex-row items-center rounded-md px-3 py-[10px] text-sm font-medium leading-none text-gray-600 hover:bg-gray-100  group-hover:text-gray-700 [&[aria-current='page']]:bg-gray-200 [&[aria-current='page']]:text-gray-900">
+                      {tab && tab.icon && (
+                        <tab.icon className="mr-[12px] h-[16px] w-[16px] stroke-[2px] md:mt-0" />
+                      )}
+                      <p className="text-sm font-medium leading-5">{t(tab.name)}</p>
+                    </div>
+                  </a>
+                </Link>
                 {teams &&
                   teamMenuState &&
                   teams.map((team, index: number) => {
@@ -236,13 +248,20 @@ const SettingsSidebarContainer = ({ className = "" }) => {
                                   textClassNames="px-3 text-gray-900 font-medium text-sm"
                                   disableChevron
                                 />
-                                {/* TODO: Implement saml configuration page */}
-                                {/* <VerticalTabItem
-                              name={t("saml_config")}
-                              href={`${WEBAPP_URL}/settings/teams/${team.id}/samlConfig`}
-                              textClassNames="px-3 text-gray-900 font-medium text-sm"
-                              disableChevron
-                            /> */}
+                                <VerticalTabItem
+                                  name={t("billing")}
+                                  href={`/settings/teams/${team.id}/billing`}
+                                  textClassNames="px-3 text-gray-900 font-medium text-sm"
+                                  disableChevron
+                                />
+                                {HOSTED_CAL_FEATURES && (
+                                  <VerticalTabItem
+                                    name={t("saml_config")}
+                                    href={`/settings/teams/${team.id}/sso`}
+                                    textClassNames="px-3 text-gray-900 font-medium text-sm"
+                                    disableChevron
+                                  />
+                                )}
                               </>
                             )}
                           </CollapsibleContent>
@@ -325,7 +344,7 @@ export default function SettingsLayout({
       SettingsSidebarContainer={
         <div
           className={classNames(
-            "fixed inset-y-0 z-50 m-0 h-screen transform overflow-y-scroll border-gray-100 bg-gray-50 transition duration-200 ease-in-out",
+            "fixed inset-y-0 z-50 m-0 h-screen w-56 transform overflow-x-hidden overflow-y-scroll border-gray-100 bg-gray-50 transition duration-200 ease-in-out",
             sideContainerOpen ? "translate-x-0" : "-translate-x-full"
           )}>
           <SettingsSidebarContainer />
@@ -369,6 +388,7 @@ function ShellHeader() {
             <div className="mb-1 h-6 w-32 animate-pulse rounded-md bg-gray-200" />
           )}
         </div>
+        <div className="ml-auto">{meta.CTA}</div>
       </div>
     </header>
   );

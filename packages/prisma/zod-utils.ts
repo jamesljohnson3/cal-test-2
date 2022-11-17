@@ -31,6 +31,12 @@ export const EventTypeMetaDataSchema = z
     blockchainId: z.number().optional(),
     giphyThankYouPage: z.string().optional(),
     apps: z.object(appDataSchemas).partial().optional(),
+    additionalNotesRequired: z.boolean().optional(),
+    config: z
+      .object({
+        useHostSchedulesForTeamEvent: z.boolean().optional(),
+      })
+      .optional(),
   })
   .nullable();
 
@@ -57,6 +63,20 @@ export const recurringEventType = z
     tzid: z.string().optional(),
   })
   .nullable();
+
+// dayjs iso parsing is very buggy - cant use :( - turns ISO string into Date object
+export const iso8601 = z.string().transform((val, ctx) => {
+  const time = Date.parse(val);
+  if (!time) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Invalid ISO Date",
+    });
+  }
+  const d = new Date();
+  d.setTime(time);
+  return d;
+});
 
 export const bookingLimitsType = z
   .object({
@@ -130,10 +150,29 @@ export const extendedBookingCreateBody = bookingCreateBodySchema.merge(
   z.object({
     noEmail: z.boolean().optional(),
     recurringCount: z.number().optional(),
+    allRecurringDates: z.string().array().optional(),
+    currentRecurringIndex: z.number().optional(),
     rescheduleReason: z.string().optional(),
     smsReminderNumber: z.string().optional(),
+    appsStatus: z
+      .array(
+        z.object({
+          appName: z.string(),
+          success: z.number(),
+          failures: z.number(),
+          type: z.string(),
+        })
+      )
+      .optional(),
   })
 );
+
+export const schemaBookingCancelParams = z.object({
+  id: z.number().optional(),
+  uid: z.string().optional(),
+  allRemainingBookings: z.boolean().optional(),
+  cancellationReason: z.string().optional(),
+});
 
 export const vitalSettingsUpdateSchema = z.object({
   connected: z.boolean().optional(),
@@ -160,6 +199,16 @@ export const userMetadata = z
   })
   .nullable();
 
+export const teamMetadataSchema = z
+  .object({
+    requestedSlug: z.string(),
+    paymentId: z.string(),
+    subscriptionId: z.string().nullable(),
+    subscriptionItemId: z.string().nullable(),
+  })
+  .partial()
+  .nullable();
+
 /**
  * Ensures that it is a valid HTTP URL
  * It automatically avoids
@@ -175,6 +224,12 @@ export const successRedirectUrl = z
       .regex(/^http(s)?:\/\/.*/),
   ])
   .optional();
+
+export const RoutingFormSettings = z
+  .object({
+    emailOwnerOnSubmission: z.boolean(),
+  })
+  .nullable();
 
 export type ZodDenullish<T extends ZodTypeAny> = T extends ZodNullable<infer U> | ZodOptional<infer U>
   ? ZodDenullish<U>

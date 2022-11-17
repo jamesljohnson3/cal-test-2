@@ -18,9 +18,9 @@ import { useLocale } from "@calcom/lib/hooks/useLocale";
 import { HttpError } from "@calcom/lib/http-error";
 import { stringOrNumber } from "@calcom/prisma/zod-utils";
 import { trpc } from "@calcom/trpc/react";
-import useMeQuery from "@calcom/trpc/react/hooks/useMeQuery";
+import { Button, Form } from "@calcom/ui/components";
 import { Option } from "@calcom/ui/form/MultiSelectCheckboxes";
-import { Alert, Button, Form, showToast } from "@calcom/ui/v2";
+import { showToast, Alert } from "@calcom/ui/v2";
 import Shell from "@calcom/ui/v2/core/Shell";
 
 import LicenseRequired from "../../../common/components/v2/LicenseRequired";
@@ -38,6 +38,13 @@ export type FormValues = {
   timeUnit?: TimeUnit;
 };
 
+export function onlyLettersNumbersSpaces(str: string) {
+  if (str.length <= 11 && /^[A-Za-z0-9\s]*$/.test(str)) {
+    return true;
+  }
+  return false;
+}
+
 const formSchema = z.object({
   name: z.string(),
   activeOn: z.object({ value: z.string(), label: z.string() }).array(),
@@ -53,9 +60,15 @@ const formSchema = z.object({
       reminderBody: z.string().nullable(),
       emailSubject: z.string().nullable(),
       template: z.nativeEnum(WorkflowTemplates),
+      numberRequired: z.boolean().nullable(),
       sendTo: z
         .string()
         .refine((val) => isValidPhoneNumber(val) || val.includes("@"))
+        .nullable(),
+      sender: z
+        .string()
+        .refine((val) => onlyLettersNumbersSpaces(val))
+        .optional()
         .nullable(),
     })
     .array(),
@@ -85,13 +98,15 @@ function WorkflowPage() {
     data: workflow,
     isError,
     error,
-    dataUpdatedAt,
-  } = trpc.useQuery(["viewer.workflows.get", { id: +workflowId }], {
-    enabled: router.isReady && !!workflowId,
-  });
+  } = trpc.viewer.workflows.get.useQuery(
+    { id: +workflowId },
+    {
+      enabled: router.isReady && !!workflowId,
+    }
+  );
 
   useEffect(() => {
-    if (workflow && !form.getValues("trigger")) {
+    if (workflow) {
       setSelectedEventTypes(
         workflow.activeOn.map((active) => ({
           value: String(active.eventType.id),
@@ -131,12 +146,12 @@ function WorkflowPage() {
       form.setValue("activeOn", activeOn || []);
       setIsAllDataLoaded(true);
     }
-  }, [dataUpdatedAt]);
+  }, [workflow]);
 
-  const updateMutation = trpc.useMutation("viewer.workflows.update", {
+  const updateMutation = trpc.viewer.workflows.update.useMutation({
     onSuccess: async ({ workflow }) => {
       if (workflow) {
-        utils.setQueryData(["viewer.workflows.get", { id: +workflow.id }], workflow);
+        utils.viewer.workflows.get.setData({ id: +workflow.id }, workflow);
 
         showToast(
           t("workflow_updated_successfully", {
